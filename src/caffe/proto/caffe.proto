@@ -762,6 +762,7 @@ message V1LayerParameter {
     SILENCE = 36;
     SOFTMAX = 20;
     SOFTMAX_LOSS = 21;
+    WEIGHTED_SOFTMAX_LOSS = 40;
     SPLIT = 22;
     SLICE = 33;
     TANH = 23;

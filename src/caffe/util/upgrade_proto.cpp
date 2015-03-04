@@ -510,6 +510,8 @@ V1LayerParameter_LayerType UpgradeV0LayerType(const string& type) {
     return V1LayerParameter_LayerType_SOFTMAX;
   } else if (type == "softmax_loss") {
     return V1LayerParameter_LayerType_SOFTMAX_LOSS;
+  } else if (type == "weighted_softmax_loss") {
+    return V1LayerParameter_LayerType_WEIGHTED_SOFTMAX_LOSS;
   } else if (type == "split") {
     return V1LayerParameter_LayerType_SPLIT;
   } else if (type == "tanh") {
@@ -907,6 +909,8 @@ const char* UpgradeV1LayerType(const V1LayerParameter_LayerType type) {
     return "Softmax";
   case V1LayerParameter_LayerType_SOFTMAX_LOSS:
     return "SoftmaxWithLoss";
+  case V1LayerParameter_LayerType_WEIGHTED_SOFTMAX_LOSS:
+    return "WeightedSoftmaxWithLoss";
   case V1LayerParameter_LayerType_SPLIT:
     return "Split";
   case V1LayerParameter_LayerType_SLICE:
