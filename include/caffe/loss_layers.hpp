@@ -788,7 +788,7 @@ class WeightedSoftmaxWithLossLayer : public LossLayer<Dtype> {
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "WeightSoftmaxWithLoss"; }
+  virtual inline const char* type() const { return "WeightedSoftmaxWithLoss"; }
   virtual inline int ExactNumBottomBlobs() const { return -1; }
   virtual inline int MinBottomBlobs() const { return 2; }
   virtual inline int MaxBottomBlobs() const { return 3; }
