@@ -5,9 +5,9 @@ interface.
 
 from collections import OrderedDict
 try:
-	from itertools import izip_longest
+    from itertools import izip_longest
 except:
-	from itertools import zip_longest as izip_longest
+    from itertools import zip_longest as izip_longest
 import numpy as np
 
 from ._caffe import Net, SGDSolver
