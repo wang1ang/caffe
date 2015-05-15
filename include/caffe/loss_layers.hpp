@@ -654,6 +654,7 @@ class SigmoidCrossEntropyLossLayer : public LossLayer<Dtype> {
 // Forward declare SoftmaxLayer for use in SoftmaxWithLossLayer.
 template <typename Dtype> class SoftmaxLayer;
 
+
 /**
  * @brief Computes the multinomial logistic loss for a one-of-many
  *        classification task, passing real-valued predictions through a
@@ -849,6 +850,50 @@ class WeightedSoftmaxWithLossLayer : public LossLayer<Dtype> {
   /// (otherwise just by the batch size).
   bool normalize_;
 };
+
+/**
+ * @brief A weighted version of SigmoidCrossEntropyLossLayer.
+ *
+ * TODO: Add description. Add the formulation in math.
+ */
+
+template <typename Dtype>
+class WeightedSigmoidCrossEntropyLossLayer : public LossLayer<Dtype> {
+ public:
+  explicit WeightedSigmoidCrossEntropyLossLayer(const LayerParameter& param)
+      : LossLayer<Dtype>(param),
+          sigmoid_layer_(new SigmoidLayer<Dtype>(param)),
+          sigmoid_output_(new Blob<Dtype>()) {}
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+
+  virtual inline const char* type() const { return "WeightedSigmoidCrossEntropyLoss"; }
+  virtual inline int ExactNumBottomBlobs() const { return 3; }
+  virtual inline int MinBottomBlobs() const { return 3; }
+  virtual inline int MaxBottomBlobs() const { return 3; }
+
+ protected:
+  /// @copydoc WeightedSigmoidCrossEntropyLossLayer
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+
+  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+  /// The internal SigmoidLayer used to map predictions to probabilities.
+  shared_ptr<SigmoidLayer<Dtype> > sigmoid_layer_;
+  /// sigmoid_output stores the output of the SigmoidLayer.
+  shared_ptr<Blob<Dtype> > sigmoid_output_;
+  /// bottom vector holder to call the underlying SigmoidLayer::Forward
+  vector<Blob<Dtype>*> sigmoid_bottom_vec_;
+  /// top vector holder to call the underlying SigmoidLayer::Forward
+  vector<Blob<Dtype>*> sigmoid_top_vec_;
+};
+
 
 }  // namespace caffe
 
