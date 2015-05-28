@@ -40,11 +40,17 @@ void WeightedSigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   // Stable version of loss computation from input data
   const Dtype* input_data = bottom[0]->cpu_data();
   const Dtype* target = bottom[1]->cpu_data();
-  const Dtype* sample_weight = bottom[2]->cpu_data();
+  const Dtype* pos_weight = bottom[2]->cpu_data();
   Dtype loss = 0;
   for (int i = 0; i < count; ++i) {
-    loss -= sample_weight[i] * (input_data[i] * (target[i] - (input_data[i] >= 0)) -
-        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+    Dtype xpos = (Dtype)(input_data[i] >= 0);
+    Dtype log_term = log(1 + exp((1 - 2 * xpos) * input_data[i]));
+    Dtype log_one_minus_sig_x = -xpos * input_data[i] - log_term;
+    Dtype log_sig_x = (1 - xpos) * input_data[i] - log_term;
+
+    //loss -= sample_weight[i] * (input_data[i] * (target[i] - (input_data[i] >= 0)) -
+    //    log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+    loss -= 2 * (pos_weight[i] * target[i] * log_sig_x + (1 - pos_weight[i]) * (1 - target[i]) * log_one_minus_sig_x);
   }
   top[0]->mutable_cpu_data()[0] = loss / num;
 }
@@ -63,11 +69,17 @@ void WeightedSigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
     const int num = bottom[0]->num();
     const Dtype* sigmoid_output_data = sigmoid_output_->cpu_data();
     const Dtype* target = bottom[1]->cpu_data();
-    const Dtype* sample_weight = bottom[2]->cpu_data();
+    const Dtype* pos_weight = bottom[2]->cpu_data();
     Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
+    for (int i = 0; i < count; ++i) {
+      bottom_diff[i] = -2 * ((1 - sigmoid_output_data[i]) * pos_weight[i] * target[i] - sigmoid_output_data[i] * (1 - pos_weight[i]) * (1 - target[i]));
+    }
+
+    /*
     caffe_sub(count, sigmoid_output_data, target, bottom_diff);
     // Multiple by weights
     caffe_mul(count, sample_weight, bottom_diff, bottom_diff);
+    */
     // Scale down gradient
     const Dtype loss_weight = top[0]->cpu_diff()[0];
     caffe_scal(count, loss_weight / num, bottom_diff);
