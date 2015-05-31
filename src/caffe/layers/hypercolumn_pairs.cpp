@@ -4,7 +4,23 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/vision_layers.hpp"
 
+#include <iostream>
+
 namespace caffe {
+
+template <typename Dtype>
+void strided_memcpy(Dtype *dst, const Dtype *src, int dst_stride, int src_stride, int count) {
+  for (int i = 0; i < count; ++i) {
+    dst[i * dst_stride] = src[i * src_stride];
+  }
+}
+
+template <typename Dtype>
+void strided_memadd(Dtype *dst, const Dtype *src, int dst_stride, int src_stride, int count) {
+  for (int i = 0; i < count; ++i) {
+    dst[i * dst_stride] += src[i * src_stride];
+  }
+}
 
 template <typename Dtype>
 void HypercolumnPairsLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
@@ -14,7 +30,6 @@ void HypercolumnPairsLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom
 template <typename Dtype>
 void HypercolumnPairsLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-    //LOG(INFO) << "Reshaping";
     num_channels_ = 0;
     num_pairs_ = bottom[0]->shape(1);
     int num = bottom[0]->shape(0);
@@ -49,30 +64,11 @@ void HypercolumnPairsLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void HypercolumnPairsLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-    
-    // Run through the pairs
-    //for (int i
-    /*
-    for (int i = 0; i < bottom.size(); ++i) {
-      if (!propagate_down[i]) { continue; }
-      Dtype* bottom_diff = bottom[i]->mutable_cpu_diff();
-      const int bottom_concat_axis = bottom[i]->shape(concat_axis_);
-      for (int n = 0; n < num_concats_; ++n) {
-        caffe_copy(bottom_concat_axis * concat_input_size_, top_diff +
-            (n * top_concat_axis + offset_concat_axis) * concat_input_size_,
-            bottom_diff + n * bottom_concat_axis * concat_input_size_);
-      }
-      offset_concat_axis += bottom_concat_axis;
-    }
-    */
-
-
   const Dtype *pairs_data = bottom[0]->cpu_data();
   Dtype *left_data = top[0]->mutable_cpu_data();
   Dtype *right_data = top[1]->mutable_cpu_data();
 
   for (int n = 0; n < bottom[0]->shape(0); ++n) {
-    int offset = n * num_pairs_ * num_layers_ * num_channels_;
     for (int p = 0; p < num_pairs_; ++p) {
       int off = n * num_pairs_ * 4 + p * 4;
       int y1 = static_cast<int>(pairs_data[off + 0]);
@@ -80,32 +76,24 @@ void HypercolumnPairsLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& botto
       int y2 = static_cast<int>(pairs_data[off + 2]);
       int x2 = static_cast<int>(pairs_data[off + 3]);
 
-      int offset1 = offset + p * num_channels_;
+      int offset1 = n * num_pairs_ * num_channels_ + p * num_channels_;
 
       int cc = 0;
       for (int l = 0; l < num_layers_; ++l) {
-        const Dtype *layer_data = bottom[l + 1]->cpu_data();
-        int layer_channels = bottom[l + 1]->shape(1);
-        for (int c = 0; c < layer_channels; ++c) {
-          /*LOG(INFO) << "Setting " << l << " (" << n << ", " << c << ", " << y1 << ", " << x1 << ") to " << "(" << n << ", " << p << ") value " << layer_data[
-            n * layer_channels * bottom_h_ * bottom_w_ +
-            c * bottom_h_ * bottom_w_ + 
-            y1 * bottom_w_ +
-            x1];
-          */
-          left_data[offset1 + cc] = layer_data[
-            n * layer_channels * bottom_h_ * bottom_w_ +
-            c * bottom_h_ * bottom_w_ + 
-            y1 * bottom_w_ +
-            x1];
+        const Dtype *layer_data = bottom[1 + l]->cpu_data();
+        int num_layer_channels = bottom[1 + l]->shape(1);
 
-          right_data[offset1 + cc] = layer_data[
-            n * layer_channels * bottom_h_ * bottom_w_ +
-            c * bottom_h_ * bottom_w_ + 
-            y2 * bottom_w_ +
-            x2];
-          cc += 1;
-        }
+        strided_memcpy(left_data + offset1 + cc,
+                       layer_data + (n * num_layer_channels * bottom_h_ * bottom_w_ +
+                                     y1 * bottom_w_ + x1),
+                       1, bottom_h_ * bottom_w_, num_layer_channels);
+
+        strided_memcpy(right_data + offset1 + cc,
+                       layer_data + (n * num_layer_channels * bottom_h_ * bottom_w_ +
+                                     y2 * bottom_w_ + x2),
+                       1, bottom_h_ * bottom_w_, num_layer_channels);
+
+        cc += num_layer_channels;
       }
     }
   }
@@ -115,10 +103,14 @@ template <typename Dtype>
 void HypercolumnPairsLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
 
+  if (propagate_down[0]) {
+    LOG(FATAL) << this->type()
+               << " Layer cannot backpropagate to pairs inputs.";
+  }
   // Not sure if I need to reset these values
   for (int l = 0; l < num_layers_; ++l) {
     Dtype *layer_diff = bottom[1 + l]->mutable_cpu_diff();
-    caffe_memset(bottom[1 + l]->count(), 0, layer_diff);
+    caffe_set(bottom[1 + l]->count(), Dtype(0), layer_diff);
   }
 
   const Dtype *pairs_data = bottom[0]->cpu_data();
@@ -126,8 +118,6 @@ void HypercolumnPairsLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   const Dtype *right_diff = top[1]->mutable_cpu_diff();
 
   for (int n = 0; n < bottom[0]->shape(0); ++n) {
-    int offset = n * num_pairs_ * num_layers_ * num_channels_;
-
     for (int p = 0; p < num_pairs_; ++p) {
       int off = n * num_pairs_ * 4 + p * 4;
       int y1 = static_cast<int>(pairs_data[off + 0]);
@@ -135,28 +125,29 @@ void HypercolumnPairsLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       int y2 = static_cast<int>(pairs_data[off + 2]);
       int x2 = static_cast<int>(pairs_data[off + 3]);
 
-      int offset1 = offset + p * num_channels_;
+      int offset1 = n * num_pairs_ * num_channels_ + p * num_channels_;
 
       int cc = 0;
       for (int l = 0; l < num_layers_; ++l) {
-        Dtype* layer_diff = bottom[1 + l]->mutable_cpu_diff();
-        int layer_channels = bottom[l + 1]->shape(1);
+        int num_layer_channels = bottom[1 + l]->shape(1);
+        if (propagate_down[1 + l]) {
+          Dtype* layer_diff = bottom[1 + l]->mutable_cpu_diff();
 
-        for (int c = 0; c < layer_channels; ++c) {
-          layer_diff[
-            n * layer_channels * bottom_h_ * bottom_w_ +
-            c * bottom_h_ * bottom_w_ +
-            y1 * bottom_w_ +
-            x1] += left_diff[offset1 + cc];
+          strided_memadd(layer_diff + (n * num_layer_channels * bottom_h_ * bottom_w_ +
+                                       y1 * bottom_w_ + x1),
+                         left_diff + offset1 + cc,
+                         bottom_h_ * bottom_w_,
+                         1,
+                         num_layer_channels);
 
-          layer_diff[
-            n * layer_channels * bottom_h_ * bottom_w_ +
-            c * bottom_h_ * bottom_w_ +
-            y2 * bottom_w_ +
-            x2] += right_diff[offset1 + cc];
-
-          cc += 1;
+          strided_memadd(layer_diff + (n * num_layer_channels * bottom_h_ * bottom_w_ +
+                                       y2 * bottom_w_ + x2),
+                         right_diff + offset1 + cc,
+                         bottom_h_ * bottom_w_,
+                         1,
+                         num_layer_channels);
         }
+        cc += num_layer_channels;
       }
     }
   }

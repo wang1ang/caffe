@@ -886,6 +886,7 @@ message V1LayerParameter {
     HDF5_DATA = 9;
     HDF5_OUTPUT = 10;
     HINGE_LOSS = 28;
+    HYPERCOLUMN_PAIRS = 42;
     IM2COL = 11;
     IMAGE_DATA = 12;
     INFOGAIN_LOSS = 13;

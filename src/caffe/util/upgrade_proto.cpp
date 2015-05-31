@@ -488,6 +488,8 @@ V1LayerParameter_LayerType UpgradeV0LayerType(const string& type) {
     return V1LayerParameter_LayerType_HDF5_DATA;
   } else if (type == "hdf5_output") {
     return V1LayerParameter_LayerType_HDF5_OUTPUT;
+  } else if (type == "hypercolumn_pairs") {
+    return V1LayerParameter_LayerType_HYPERCOLUMN_PAIRS;
   } else if (type == "im2col") {
     return V1LayerParameter_LayerType_IM2COL;
   } else if (type == "images") {
@@ -877,6 +879,8 @@ const char* UpgradeV1LayerType(const V1LayerParameter_LayerType type) {
     return "HDF5Output";
   case V1LayerParameter_LayerType_HINGE_LOSS:
     return "HingeLoss";
+  case V1LayerParameter_LayerType_HYPERCOLUMN_PAIRS:
+    return "HypercolumnPairs";
   case V1LayerParameter_LayerType_IM2COL:
     return "Im2col";
   case V1LayerParameter_LayerType_IMAGE_DATA:
