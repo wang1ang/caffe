@@ -7,13 +7,6 @@
 namespace caffe {
 
 template <typename Dtype>
-void strided_gpu_memadd(Dtype *dst, const Dtype *src, int dst_stride, int src_stride, int count) {
-  for (int i = 0; i < count; ++i) {
-    dst[i * dst_stride] += src[i * src_stride];
-  }
-}
-
-template <typename Dtype>
 __global__ void forward_kernel(
     const int nthreads,
     const int num_pairs,
