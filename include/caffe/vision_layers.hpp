@@ -551,6 +551,7 @@ class HypercolumnPairsLayer : public Layer<Dtype> {
   int num_channels_; // in the entire hypercolumn
   int num_pairs_;
   int bottom_h_, bottom_w_;
+  vector<int> channel_offsets_;
 };
 
 }  // namespace caffe

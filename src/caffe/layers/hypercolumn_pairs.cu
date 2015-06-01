@@ -6,17 +6,6 @@
 
 namespace caffe {
 
-void strided_gpu_memcpy(void *dst, const void *src, int dst_stride, int src_stride, int count, int size) {
-  cudaMemcpy2D(
-    dst,
-    size * dst_stride,
-    src,
-    size * src_stride,
-    size,
-    count,
-    cudaMemcpyDefault);
-}
-
 template <typename Dtype>
 void strided_gpu_memadd(Dtype *dst, const Dtype *src, int dst_stride, int src_stride, int count) {
   for (int i = 0; i < count; ++i) {
@@ -24,106 +13,149 @@ void strided_gpu_memadd(Dtype *dst, const Dtype *src, int dst_stride, int src_st
   }
 }
 
+template <typename Dtype>
+__global__ void forward_kernel(
+    const int nthreads,
+    const int num_pairs,
+    const int num_channels,
+    const int num_layer_channels,
+    const int bottom_h,
+    const int bottom_w,
+    const int channel_offset,
+    const Dtype *pairs_data,
+    const Dtype *layer_data,
+    Dtype *left_data,
+    Dtype *right_data) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int n = index / num_pairs / num_layer_channels;
+    int p = (index / num_layer_channels) % num_pairs;
+    int c = index % num_layer_channels;
+
+    int pairs_offset = (n * num_pairs + p) * 4;
+    int y1 = static_cast<int>(pairs_data[pairs_offset + 0]);
+    int x1 = static_cast<int>(pairs_data[pairs_offset + 1]);
+    int y2 = static_cast<int>(pairs_data[pairs_offset + 2]);
+    int x2 = static_cast<int>(pairs_data[pairs_offset + 3]);
+
+    int layer_offset = (n * num_pairs + p) * num_channels;
+
+    int left_offset = (n * num_layer_channels * bottom_h * bottom_w + y1 * bottom_w + x1);
+    int right_offset = (n * num_layer_channels * bottom_h * bottom_w + y2 * bottom_w + x2);
+
+    left_data[layer_offset + channel_offset + c] =
+        layer_data[left_offset + c * bottom_h * bottom_w];
+    right_data[layer_offset + channel_offset + c] =
+        layer_data[right_offset + c * bottom_h * bottom_w];
+  }
+}
 
 template <typename Dtype>
 void HypercolumnPairsLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-  const Dtype *pairs_data = bottom[0]->cpu_data();
-  void *left_data = top[0]->mutable_gpu_data();
-  void *right_data = top[1]->mutable_gpu_data();
+  const Dtype *pairs_data = bottom[0]->gpu_data();
+  Dtype *left_data = top[0]->mutable_gpu_data();
+  Dtype *right_data = top[1]->mutable_gpu_data();
 
-  for (int n = 0; n < bottom[0]->shape(0); ++n) {
-    for (int p = 0; p < num_pairs_; ++p) {
-      int off = n * num_pairs_ * 4 + p * 4;
-      int y1 = static_cast<int>(pairs_data[off + 0]);
-      int x1 = static_cast<int>(pairs_data[off + 1]);
-      int y2 = static_cast<int>(pairs_data[off + 2]);
-      int x2 = static_cast<int>(pairs_data[off + 3]);
+  for (int l = 0; l < num_layers_; ++l) {
+    int num_layer_channels = bottom[1 + l]->shape(1);
+    int total_count = bottom[0]->shape(0) * num_pairs_ * num_layer_channels;
+    const Dtype* layer_data = bottom[1 + l]->gpu_data();
 
-      int offset1 = n * num_pairs_ * num_channels_ + p * num_channels_;
-
-      int cc = 0;
-      for (int l = 0; l < num_layers_; ++l) {
-        const void *layer_data = bottom[1 + l]->gpu_data();
-        int num_layer_channels = bottom[1 + l]->shape(1);
-
-        strided_gpu_memcpy(left_data + sizeof(Dtype) * (offset1 + cc),
-                       layer_data + sizeof(Dtype) * (n * num_layer_channels * bottom_h_ * bottom_w_ +
-                                         y1 * bottom_w_ + x1),
-                       1, bottom_h_ * bottom_w_, num_layer_channels, sizeof(Dtype));
-
-        strided_gpu_memcpy(right_data + sizeof(Dtype) * (offset1 + cc),
-                       layer_data + sizeof(Dtype) * (n * num_layer_channels * bottom_h_ * bottom_w_ +
-                                         y2 * bottom_w_ + x2),
-                       1, bottom_h_ * bottom_w_, num_layer_channels, sizeof(Dtype));
-
-        cc += num_layer_channels;
-      }
-    }
+    forward_kernel<Dtype><<<CAFFE_GET_BLOCKS(total_count), CAFFE_CUDA_NUM_THREADS>>>(
+        total_count,
+        num_pairs_,
+        num_channels_,
+        num_layer_channels,
+        bottom_h_,
+        bottom_w_,
+        channel_offsets_[l],
+        pairs_data,
+        layer_data,
+        left_data,
+        right_data);
   }
 }
 
-/*
-template <typename Dtype>
-__global__ void back_helper(const int n, const Dtype alpha, Dtype* y) {
-  CUDA_KERNEL_LOOP(index, n) {
-    y[index] = alpha;
+__global__ void backward_kernel(
+    const int nthreads,
+    const int num_pairs,
+    const int num_channels,
+    const int num_layer_channels,
+    const int bottom_h,
+    const int bottom_w,
+    const int channel_offset,
+    const float *pairs_data,
+    const float *left_diff,
+    const float *right_diff,
+    float *layer_diff) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int n = index / num_pairs / num_layer_channels;
+    int p = (index / num_layer_channels) % num_pairs;
+    int c = index % num_layer_channels;
+
+    int pairs_offset = (n * num_pairs + p) * 4;
+    int y1 = static_cast<int>(pairs_data[pairs_offset + 0]);
+    int x1 = static_cast<int>(pairs_data[pairs_offset + 1]);
+    int y2 = static_cast<int>(pairs_data[pairs_offset + 2]);
+    int x2 = static_cast<int>(pairs_data[pairs_offset + 3]);
+
+    int layer_offset = (n * num_pairs + p) * num_channels;
+
+    int left_offset = (n * num_layer_channels * bottom_h * bottom_w + y1 * bottom_w + x1);
+    int right_offset = (n * num_layer_channels * bottom_h * bottom_w + y2 * bottom_w + x2);
+
+    // Multiple threads could increment the same values, so it has to be atomic
+    atomicAdd(&layer_diff[left_offset + c * bottom_h * bottom_w],
+              left_diff[layer_offset + channel_offset + c]);
+    atomicAdd(&layer_diff[right_offset + c * bottom_h * bottom_w],
+              right_diff[layer_offset + channel_offset + c]);
   }
 }
-*/
 
+// Note: The general templated version will fall-back to the CPU version.
+// This will happen only for 64-bit floats, since the 32-bit version is defined below
 template <typename Dtype>
 void HypercolumnPairsLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+  Backward_cpu(top, propagate_down, bottom);
+}
+
+template <>
+void HypercolumnPairsLayer<float>::Backward_gpu(const vector<Blob<float>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<float>*>& bottom) {
   if (propagate_down[0]) {
     LOG(FATAL) << this->type()
                << " Layer cannot backpropagate to pairs inputs.";
   }
-  // Not sure if I need to reset these values
+
+  // Reset gradients
   for (int l = 0; l < num_layers_; ++l) {
-    Dtype *layer_diff = bottom[1 + l]->mutable_cpu_diff();
-    caffe_set(bottom[1 + l]->count(), Dtype(0), layer_diff);
+    float *layer_diff = bottom[1 + l]->mutable_gpu_diff();
+    caffe_gpu_set(bottom[1 + l]->count(), float(0), layer_diff);
   }
 
-  //back_helper<Dtype><<<CAFFE_GET_BLOCKS(N), CAFFE_CUDA_NUM_THREADS>>>(
-      //N, alpha, Y);
+  const float *pairs_data = bottom[0]->gpu_data();
+  const float *left_diff = top[0]->gpu_diff();
+  const float *right_diff = top[1]->gpu_diff();
 
-  const Dtype *pairs_data = bottom[0]->cpu_data();
-  const Dtype *left_diff = top[0]->mutable_cpu_diff();
-  const Dtype *right_diff = top[1]->mutable_cpu_diff();
+  for (int l = 0; l < num_layers_; ++l) {
+    if (propagate_down[1 + l]) {
+      int num_layer_channels = bottom[1 + l]->shape(1);
+      int total_count = bottom[0]->shape(0) * num_pairs_ * num_layer_channels;
+      float* layer_diff = bottom[1 + l]->mutable_gpu_diff();
 
-  for (int n = 0; n < bottom[0]->shape(0); ++n) {
-    for (int p = 0; p < num_pairs_; ++p) {
-      int off = n * num_pairs_ * 4 + p * 4;
-      int y1 = static_cast<int>(pairs_data[off + 0]);
-      int x1 = static_cast<int>(pairs_data[off + 1]);
-      int y2 = static_cast<int>(pairs_data[off + 2]);
-      int x2 = static_cast<int>(pairs_data[off + 3]);
-
-      int offset1 = n * num_pairs_ * num_channels_ + p * num_channels_;
-
-      int cc = 0;
-      for (int l = 0; l < num_layers_; ++l) {
-        int num_layer_channels = bottom[1 + l]->shape(1);
-        if (propagate_down[1 + l]) {
-          Dtype* layer_diff = bottom[1 + l]->mutable_cpu_diff();
-
-          strided_gpu_memadd(layer_diff + (n * num_layer_channels * bottom_h_ * bottom_w_ +
-                                       y1 * bottom_w_ + x1),
-                         left_diff + offset1 + cc,
-                         bottom_h_ * bottom_w_,
-                         1,
-                         num_layer_channels);
-
-          strided_gpu_memadd(layer_diff + (n * num_layer_channels * bottom_h_ * bottom_w_ +
-                                       y2 * bottom_w_ + x2),
-                         right_diff + offset1 + cc,
-                         bottom_h_ * bottom_w_,
-                         1,
-                         num_layer_channels);
-        }
-        cc += num_layer_channels;
-      }
+      backward_kernel<<<CAFFE_GET_BLOCKS(total_count), CAFFE_CUDA_NUM_THREADS>>>(
+          total_count,
+          num_pairs_,
+          num_channels_,
+          num_layer_channels,
+          bottom_h_,
+          bottom_w_,
+          channel_offsets_[l],
+          pairs_data,
+          left_diff,
+          right_diff,
+          layer_diff);
     }
   }
 }

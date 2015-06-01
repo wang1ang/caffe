@@ -49,6 +49,7 @@ void HypercolumnPairsLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 
         CHECK_EQ(bottom[i]->shape(0), num);
 
+        channel_offsets_.push_back(num_channels_);
         num_channels_ += bottom[i]->shape(1);
         num_layers_ += 1;
     }
@@ -78,10 +79,10 @@ void HypercolumnPairsLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& botto
 
       int offset1 = n * num_pairs_ * num_channels_ + p * num_channels_;
 
-      int cc = 0;
       for (int l = 0; l < num_layers_; ++l) {
         const Dtype *layer_data = bottom[1 + l]->cpu_data();
         int num_layer_channels = bottom[1 + l]->shape(1);
+        int cc = channel_offsets_[l];
 
         strided_memcpy(left_data + offset1 + cc,
                        layer_data + (n * num_layer_channels * bottom_h_ * bottom_w_ +
@@ -92,8 +93,6 @@ void HypercolumnPairsLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& botto
                        layer_data + (n * num_layer_channels * bottom_h_ * bottom_w_ +
                                      y2 * bottom_w_ + x2),
                        1, bottom_h_ * bottom_w_, num_layer_channels);
-
-        cc += num_layer_channels;
       }
     }
   }
@@ -127,10 +126,10 @@ void HypercolumnPairsLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 
       int offset1 = n * num_pairs_ * num_channels_ + p * num_channels_;
 
-      int cc = 0;
       for (int l = 0; l < num_layers_; ++l) {
         int num_layer_channels = bottom[1 + l]->shape(1);
         if (propagate_down[1 + l]) {
+          int cc = channel_offsets_[l];
           Dtype* layer_diff = bottom[1 + l]->mutable_cpu_diff();
 
           strided_memadd(layer_diff + (n * num_layer_channels * bottom_h_ * bottom_w_ +
@@ -147,14 +146,13 @@ void HypercolumnPairsLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
                          1,
                          num_layer_channels);
         }
-        cc += num_layer_channels;
       }
     }
   }
 }
 
 #ifdef CPU_ONLY
-//STUB_GPU(HypercolumnPairsLayer);
+STUB_GPU(HypercolumnPairsLayer);
 #endif
 
 INSTANTIATE_CLASS(HypercolumnPairsLayer);
