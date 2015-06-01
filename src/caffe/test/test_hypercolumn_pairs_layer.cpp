@@ -14,46 +14,38 @@
 
 namespace caffe {
 
+template <typename Dtype>
+void make_pair(Dtype *v, int n, int y1, int x1, int y2, int x2) {
+    v[4*n  ] = y1;
+    v[4*n+1] = x1;
+    v[4*n+2] = y2;
+    v[4*n+3] = x2;
+}
+
 template <typename TypeParam>
 class HypercolumnPairsLayerTest : public MultiDeviceTest<TypeParam> {
   typedef typename TypeParam::Dtype Dtype;
 
  protected:
   HypercolumnPairsLayerTest()
-      : 
-        //blob_bottom_pairs_(new Blob<Dtype>(2, 2, 4, 1)),
-        //blob_bottom_0_(new Blob<Dtype>(2, 1, 2, 2)),
-
-        blob_bottom_pairs_(new Blob<Dtype>(2, 3, 4, 1)),
+      : blob_bottom_pairs_(new Blob<Dtype>(2, 3, 4, 1)),
         blob_bottom_0_(new Blob<Dtype>(2, 7, 10, 5)),
         blob_bottom_1_(new Blob<Dtype>(2, 3, 10, 5)),
         blob_bottom_2_(new Blob<Dtype>(2, 10, 10, 5)),
-        //blob_bottom_pairs_(new Blob<Dtype>(1, 1, 4, 1)),
-        //blob_bottom_0_(new Blob<Dtype>(1, 1, 1, 1)),
-        //blob_bottom_1_(new Blob<Dtype>(1, 1, 1, 1)),
-        //blob_bottom_2_(new Blob<Dtype>(1, 1, 1, 1)),
         blob_top_left_(new Blob<Dtype>()),
         blob_top_right_(new Blob<Dtype>()) {
   }
   virtual void SetUp() {
-    // fill the values
-    //shared_ptr<ConstantFiller<Dtype> > filler;
-
     Dtype *pairs_data = blob_bottom_pairs_->mutable_cpu_data();
 
     int c = 0;
-#   define PAIR_(n, y1, x1, y2, x2) {int n_=n; pairs_data[4*n_] = y1; pairs_data[4*n_+1] = x1; pairs_data[4*n_+2] = y2; pairs_data[4*n_+3] = x2;}
+    make_pair(pairs_data, c++, 0, 0, 0, 0);
+    make_pair(pairs_data, c++, 0, 0, 9, 4);
+    make_pair(pairs_data, c++, 2, 3, 4, 2);
 
-#if 1
-    PAIR_(c++, 0, 0, 0, 0);
-    PAIR_(c++, 0, 0, 9, 4);
-    PAIR_(c++, 2, 3, 4, 2);
-
-    PAIR_(c++, 1, 0, 1, 0);
-    PAIR_(c++, 1, 1, 1, 1);
-    PAIR_(c++, 2, 3, 4, 2);
-#endif
-    //PAIR_(c++, 0, 0, 0, 0);
+    make_pair(pairs_data, c++, 1, 0, 1, 0);
+    make_pair(pairs_data, c++, 1, 1, 1, 1);
+    make_pair(pairs_data, c++, 2, 3, 4, 2);
 
     vector<int> shape;
     shape.push_back(blob_bottom_pairs_->shape(0));
@@ -132,9 +124,9 @@ TYPED_TEST(HypercolumnPairsLayerTest, TestGradient0) {
   HypercolumnPairsLayer<Dtype> layer(layer_param);
   GradientChecker<Dtype> checker(1e-1, 1e-2);
   for (int l = 1; l < this->blob_bottom_vec_0_.size(); ++l) {
+    // Test gradient for one input layer
     checker.CheckGradient(&layer, this->blob_bottom_vec_0_, this->blob_top_vec_, l);
   }
-  //checker.CheckGradient(&layer, this->blob_bottom_vec_0_, this->blob_top_vec_, 2);
 }
 
 }  // namespace caffe
