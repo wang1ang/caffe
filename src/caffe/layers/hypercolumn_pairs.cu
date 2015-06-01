@@ -20,6 +20,7 @@ __global__ void forward_kernel(
     Dtype *left_data,
     Dtype *right_data) {
   CUDA_KERNEL_LOOP(index, nthreads) {
+    // n: sample, p: pair, c: channel
     int n = index / num_pairs / num_layer_channels;
     int p = (index / num_layer_channels) % num_pairs;
     int c = index % num_layer_channels;
@@ -31,14 +32,12 @@ __global__ void forward_kernel(
     int x2 = static_cast<int>(pairs_data[pairs_offset + 3]);
 
     int layer_offset = (n * num_pairs + p) * num_channels;
-
-    int left_offset = (n * num_layer_channels * bottom_h * bottom_w + y1 * bottom_w + x1);
-    int right_offset = (n * num_layer_channels * bottom_h * bottom_w + y2 * bottom_w + x2);
+    int base_offset = (n * num_layer_channels + c) * bottom_h * bottom_w;
 
     left_data[layer_offset + channel_offset + c] =
-        layer_data[left_offset + c * bottom_h * bottom_w];
+        layer_data[base_offset + y1 * bottom_w + x1];
     right_data[layer_offset + channel_offset + c] =
-        layer_data[right_offset + c * bottom_h * bottom_w];
+        layer_data[base_offset + y2 * bottom_w + x2];
   }
 }
 
@@ -82,6 +81,7 @@ __global__ void backward_kernel(
     const float *right_diff,
     float *layer_diff) {
   CUDA_KERNEL_LOOP(index, nthreads) {
+    // n: sample, p: pair, c: channel
     int n = index / num_pairs / num_layer_channels;
     int p = (index / num_layer_channels) % num_pairs;
     int c = index % num_layer_channels;
@@ -93,14 +93,12 @@ __global__ void backward_kernel(
     int x2 = static_cast<int>(pairs_data[pairs_offset + 3]);
 
     int layer_offset = (n * num_pairs + p) * num_channels;
-
-    int left_offset = (n * num_layer_channels * bottom_h * bottom_w + y1 * bottom_w + x1);
-    int right_offset = (n * num_layer_channels * bottom_h * bottom_w + y2 * bottom_w + x2);
+    int base_offset = (n * num_layer_channels + c) * bottom_h * bottom_w;
 
     // Multiple threads could increment the same values, so it has to be atomic
-    atomicAdd(&layer_diff[left_offset + c * bottom_h * bottom_w],
+    atomicAdd(&layer_diff[base_offset + y1 * bottom_w + x1],
               left_diff[layer_offset + channel_offset + c]);
-    atomicAdd(&layer_diff[right_offset + c * bottom_h * bottom_w],
+    atomicAdd(&layer_diff[base_offset + y2 * bottom_w + x2],
               right_diff[layer_offset + channel_offset + c]);
   }
 }
@@ -124,7 +122,7 @@ void HypercolumnPairsLayer<float>::Backward_gpu(const vector<Blob<float>*>& top,
   // Reset gradients
   for (int l = 0; l < num_layers_; ++l) {
     float *layer_diff = bottom[1 + l]->mutable_gpu_diff();
-    caffe_gpu_set(bottom[1 + l]->count(), float(0), layer_diff);
+    caffe_gpu_set(bottom[1 + l]->count(), 0f, layer_diff);
   }
 
   const float *pairs_data = bottom[0]->gpu_data();
