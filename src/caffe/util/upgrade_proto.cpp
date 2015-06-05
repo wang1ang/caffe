@@ -881,6 +881,8 @@ const char* UpgradeV1LayerType(const V1LayerParameter_LayerType type) {
     return "HingeLoss";
   case V1LayerParameter_LayerType_HYPERCOLUMN_PAIRS:
     return "HypercolumnPairs";
+  case V1LayerParameter_LayerType_HYPERCOLUMN_EXTRACTOR:
+    return "HypercolumnExtractor";
   case V1LayerParameter_LayerType_IM2COL:
     return "Im2col";
   case V1LayerParameter_LayerType_IMAGE_DATA:

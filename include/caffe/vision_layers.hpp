@@ -554,6 +554,45 @@ class HypercolumnPairsLayer : public Layer<Dtype> {
   vector<int> channel_offsets_;
 };
 
+/**
+ * This extracts locations of hypercolumns. It should be faster, and more importantly
+ * use less memory, than the original, since you do not need separate upscaling
+ * layers. It does the bilinear upscaling by itself.
+ */
+template <typename Dtype>
+class HypercolumnExtractorLayer : public Layer<Dtype> {
+ public:
+  explicit HypercolumnExtractorLayer(const LayerParameter& param)
+      : Layer<Dtype>(param) {}
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+
+  virtual inline const char* type() const { return "HypercolumnExtractor"; }
+  virtual inline int MinBottomBlobs() const { return 2; }
+  virtual inline int ExactNumTopBlobs() const { return 1; }
+
+ protected:
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+
+  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+  int num_layers_;
+  int num_channels_; // in the entire hypercolumn
+  int num_locations_;
+  vector<Dtype> offsets_h_;
+  vector<Dtype> offsets_w_;
+  vector<Dtype> scales_;
+  vector<int> channel_offsets_;
+};
+
 }  // namespace caffe
 
 #endif  // CAFFE_VISION_LAYERS_HPP_
