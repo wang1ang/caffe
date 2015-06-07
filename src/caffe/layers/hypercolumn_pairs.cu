@@ -96,10 +96,16 @@ __global__ void backward_kernel(
     int base_offset = (n * num_layer_channels + c) * bottom_h * bottom_w;
 
     // Multiple threads could increment the same values, so it has to be atomic
+#define ATOMIC
+#ifdef ATOMIC
     atomicAdd(&layer_diff[base_offset + y1 * bottom_w + x1],
               left_diff[layer_offset + channel_offset + c]);
     atomicAdd(&layer_diff[base_offset + y2 * bottom_w + x2],
               right_diff[layer_offset + channel_offset + c]);
+#else
+    layer_diff[base_offset + y1 * bottom_w + x1] = left_diff[layer_offset + channel_offset + c];
+    layer_diff[base_offset + y2 * bottom_w + x2] = right_diff[layer_offset + channel_offset + c];
+#endif
   }
 }
 
@@ -122,7 +128,7 @@ void HypercolumnPairsLayer<float>::Backward_gpu(const vector<Blob<float>*>& top,
   // Reset gradients
   for (int l = 0; l < num_layers_; ++l) {
     float *layer_diff = bottom[1 + l]->mutable_gpu_diff();
-    caffe_gpu_set(bottom[1 + l]->count(), 0f, layer_diff);
+    caffe_gpu_set(bottom[1 + l]->count(), 0.0f, layer_diff);
   }
 
   const float *pairs_data = bottom[0]->gpu_data();

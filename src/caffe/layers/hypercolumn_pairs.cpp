@@ -4,8 +4,6 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/vision_layers.hpp"
 
-#include <iostream>
-
 namespace caffe {
 
 template <typename Dtype>
