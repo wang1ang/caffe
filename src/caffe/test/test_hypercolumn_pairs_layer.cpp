@@ -39,12 +39,12 @@ class HypercolumnPairsLayerTest : public MultiDeviceTest<TypeParam> {
     Dtype *pairs_data = blob_bottom_pairs_->mutable_cpu_data();
 
     int c = 0;
-    make_pair(pairs_data, c++, 0, 0, 0, 0);
-    make_pair(pairs_data, c++, 0, 0, 9, 4);
+    make_pair(pairs_data, c++, 0, 0, 0, 1);
+    make_pair(pairs_data, c++, 0, 2, 9, 4);
     make_pair(pairs_data, c++, 2, 3, 4, 2);
 
-    make_pair(pairs_data, c++, 1, 0, 1, 0);
-    make_pair(pairs_data, c++, 1, 1, 1, 1);
+    make_pair(pairs_data, c++, 1, 0, 2, 0);
+    make_pair(pairs_data, c++, 1, 2, 1, 1);
     make_pair(pairs_data, c++, 2, 3, 4, 2);
 
     vector<int> shape;

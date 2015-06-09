@@ -22,13 +22,13 @@ __global__ void forward_kernel(
     const Dtype *layer_data,
     Dtype *hypercol_data) {
   CUDA_KERNEL_LOOP(index, nthreads) {
-    // n: sample, p: pair, c: channel
+    // n: sample, p: position, c: channel
     int n = index / num_locations / num_layer_channels;
     int p = (index / num_layer_channels) % num_locations;
     int c = index % num_layer_channels;
 
-    int off = n * num_locations * 2 + p * 2;
-    Dtype y = locations_data[off + 0];
+    int off = (n * num_locations + p) * 2;
+    Dtype y = locations_data[off];
     Dtype x = locations_data[off + 1];
 
     int offset0 = n * num_locations * num_channels + p * num_channels;
@@ -115,13 +115,13 @@ __global__ void backward_kernel(
     const Dtype *hypercol_diff,
     Dtype *layer_diff) {
   CUDA_KERNEL_LOOP(index, nthreads) {
-    // n: sample, p: pair, c: channel
+    // n: sample, p: position, c: channel
     int n = index / num_locations / num_layer_channels;
     int p = (index / num_layer_channels) % num_locations;
     int c = index % num_layer_channels;
 
-    int off = n * num_locations * 2 + p * 2;
-    Dtype y = locations_data[off + 0];
+    int off = (n * num_locations + p) * 2;
+    Dtype y = locations_data[off];
     Dtype x = locations_data[off + 1];
 
     int offset0 = n * num_locations * num_channels + p * num_channels;
