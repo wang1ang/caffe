@@ -8,6 +8,7 @@
 
 namespace caffe {
 
+    /*
 template <typename Dtype>
 void WeightedSigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down,
@@ -35,6 +36,14 @@ void WeightedSigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
 }
 
 INSTANTIATE_LAYER_GPU_BACKWARD(WeightedSigmoidCrossEntropyLossLayer);
+*/
+template <typename Dtype>
+void WeightedSigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
+    const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down,
+    const vector<Blob<Dtype>*>& bottom) {
+  Backward_cpu(top, propagate_down, bottom);
+}
 
+INSTANTIATE_LAYER_GPU_BACKWARD(WeightedSigmoidCrossEntropyLossLayer);
 
 }  // namespace caffe
