@@ -306,7 +306,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 147 (last added: recurrent_param)
+// LayerParameter next available layer-specific ID: 148 (last added: hypercolumn_extractor_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -389,6 +389,7 @@ message LayerParameter {
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
   optional PReLUParameter prelu_param = 131;
+  optional HypercolumnExtractorParameter hypercolumn_extractor_param = 147;
   optional PythonParameter python_param = 130;
   optional RecurrentParameter recurrent_param = 146;
   optional ReductionParameter reduction_param = 136;
@@ -1228,6 +1229,8 @@ message V1LayerParameter {
     HDF5_DATA = 9;
     HDF5_OUTPUT = 10;
     HINGE_LOSS = 28;
+    HYPERCOLUMN_PAIRS = 42;
+    HYPERCOLUMN_EXTRACTOR = 43;
     IM2COL = 11;
     IMAGE_DATA = 12;
     INFOGAIN_LOSS = 13;
@@ -1244,6 +1247,8 @@ message V1LayerParameter {
     SILENCE = 36;
     SOFTMAX = 20;
     SOFTMAX_LOSS = 21;
+    WEIGHTED_SOFTMAX_LOSS = 40;
+    WEIGHTED_SIGMOID_CROSS_ENTROPY_LOSS = 41;
     SPLIT = 22;
     SLICE = 33;
     TANH = 23;
@@ -1396,4 +1401,10 @@ message PReLUParameter {
   optional FillerParameter filler = 1;
   // Whether or not slope paramters are shared across channels.
   optional bool channel_shared = 2 [default = false];
+}
+
+message HypercolumnExtractorParameter {
+  repeated float scale = 1;
+  repeated float offset_height = 2;
+  repeated float offset_width = 3;
 }

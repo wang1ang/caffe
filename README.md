@@ -2,6 +2,8 @@
 
 **This is an experimental, Microsoft-led branch by Pavle Josipovic (@pavlejosipovic). It is a work-in-progress.**
 
+**Note:** Read about the new features in this branch in [BRANCHFEATURES.md](BRANCHFEATURES.md).
+
 This branch of Caffe ports the framework to Windows.
 
 [![Travis Build Status](https://api.travis-ci.org/BVLC/caffe.svg?branch=windows)](https://travis-ci.org/BVLC/caffe) Travis (Linux build)
