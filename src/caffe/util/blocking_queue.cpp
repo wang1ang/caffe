@@ -2,6 +2,8 @@
 #include <string>
 
 #include "caffe/layers/base_data_layer.hpp"
+#include "caffe/layers/unified_data_layer.hpp"
+#include "caffe/unified_data_reader.hpp"
 #include "caffe/parallel.hpp"
 #include "caffe/util/blocking_queue.hpp"
 
@@ -87,5 +89,10 @@ size_t BlockingQueue<T>::size() const {
 
 template class BlockingQueue<Batch<float>*>;
 template class BlockingQueue<Batch<double>*>;
+template class BlockingQueue<UnifiedSample*>;
+template class BlockingQueue<UnifiedBatch<float>*>;
+template class BlockingQueue<UnifiedBatch<double>*>;
+template class BlockingQueue<shared_ptr<UnifiedDataReader::QueuePair> >;
+//template class BlockingQueue<shared_ptr<DataReader::QueuePair> >;
 
 }  // namespace caffe

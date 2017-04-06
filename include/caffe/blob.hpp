@@ -8,6 +8,7 @@
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/syncedmem.hpp"
+#include "caffe/sparse_blob.hpp"
 
 const int kMaxBlobAxes = 32;
 
@@ -273,10 +274,19 @@ class Blob {
   vector<int> shape_;
   int count_;
   int capacity_;
+  shared_ptr<SparseBlob<Dtype> > sparse_blob_;
+  
+  public:
+    typedef shared_ptr<SparseBlob<Dtype> > SparseBlobSharedPtr;
+    const SparseBlobSharedPtr sparse_blob() const { return sparse_blob_; }
+    SparseBlobSharedPtr sparse_blob() { return sparse_blob_; }
 
   DISABLE_COPY_AND_ASSIGN(Blob);
 };  // class Blob
-
+  template<class Dtype>
+  void SparseBlob2DenseBlob(const SparseBlob<Dtype>& input_sprase_blob, Blob<Dtype>& dense_blob);
+  template<class Dtype>
+  void DenseBlob2SparseBlob(const Blob<Dtype>& input_dense_blob, SparseBlob<Dtype>& sprase_blob);
 }  // namespace caffe
 
 #endif  // CAFFE_BLOB_HPP_

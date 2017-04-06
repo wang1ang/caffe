@@ -6,6 +6,7 @@
 #include "caffe/common.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
+#include "caffe/sparse_blob.hpp"
 
 namespace caffe {
 
@@ -103,6 +104,8 @@ template void caffe_copy<unsigned int>(const int N, const unsigned int* X,
     unsigned int* Y);
 template void caffe_copy<float>(const int N, const float* X, float* Y);
 template void caffe_copy<double>(const int N, const double* X, double* Y);
+template void caffe_copy<SparseItem<float>>(const int N, const SparseItem<float>* X, SparseItem<float>* Y);
+template void caffe_copy<SparseItem<double>>(const int N, const SparseItem<double>* X, SparseItem<double>* Y);
 
 template <>
 void caffe_scal<float>(const int N, const float alpha, float *X) {
