@@ -7,7 +7,7 @@ if DEFINED APPVEYOR (
     if NOT DEFINED MSVC_VERSION set MSVC_VERSION=14
     if NOT DEFINED WITH_NINJA set WITH_NINJA=1
     if NOT DEFINED CPU_ONLY set CPU_ONLY=1
-    if NOT DEFINED CMAKE_CONFIG set CMAKE_CONFIG=Release
+    if NOT DEFINED CMAKE_CONFIG set CMAKE_CONFIG=Debug
     if NOT DEFINED USE_NCCL set USE_NCCL=0
     if NOT DEFINED CMAKE_BUILD_SHARED_LIBS set CMAKE_BUILD_SHARED_LIBS=0
     if NOT DEFINED PYTHON_VERSION set PYTHON_VERSION=2
@@ -74,7 +74,7 @@ if DEFINED APPVEYOR (
     :: Change to 1 to build caffe without CUDA support
     if NOT DEFINED CPU_ONLY set CPU_ONLY=0
     :: Change to Debug to build Debug. This is only relevant for the Ninja generator the Visual Studio generator will generate both Debug and Release configs
-    if NOT DEFINED CMAKE_CONFIG set CMAKE_CONFIG=Release
+    if NOT DEFINED CMAKE_CONFIG set CMAKE_CONFIG=Debug
     :: Set to 1 to use NCCL
     if NOT DEFINED USE_NCCL set USE_NCCL=0
     :: Change to 1 to build a caffe.dll
