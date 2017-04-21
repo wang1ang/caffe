@@ -36,6 +36,9 @@ DEFINE_string(backend, "lmdb",
         "The backend {lmdb, leveldb} for storing the result");
 DEFINE_int32(resize_width, 0, "Width images are resized to");
 DEFINE_int32(resize_height, 0, "Height images are resized to");
+DEFINE_int32(crop_width, 0, "Width ratio images are cropped to");
+DEFINE_int32(crop_height, 0, "Height ratio images are cropped to");
+
 DEFINE_bool(check_size, false,
     "When this option is on, check that all the datum have the same size");
 DEFINE_bool(encoded, false,
@@ -93,6 +96,8 @@ int main(int argc, char** argv) {
 
   int resize_height = std::max<int>(0, FLAGS_resize_height);
   int resize_width = std::max<int>(0, FLAGS_resize_width);
+  int crop_height = std::max<int>(0, FLAGS_resize_height);
+  int crop_width = std::max<int>(0, FLAGS_resize_width);
 
   // Create new DB
   scoped_ptr<db::DB> db(db::GetDB(FLAGS_backend));
@@ -118,9 +123,15 @@ int main(int argc, char** argv) {
       enc = fn.substr(p);
       std::transform(enc.begin(), enc.end(), enc.begin(), ::tolower);
     }
-    status = ReadImageToDatum(root_folder + lines[line_id].first,
-        lines[line_id].second, resize_height, resize_width, is_color,
-        enc, &datum);
+	if (crop_width > 0 && crop_height > 0) {
+      status = ReadImageToDatum(root_folder + lines[line_id].first,
+          lines[line_id].second, resize_height, resize_width, is_color, crop_height, crop_width,
+          enc, &datum);
+	} else {
+      status = ReadImageToDatum(root_folder + lines[line_id].first,
+          lines[line_id].second, resize_height, resize_width, is_color,
+          enc, &datum);
+	}
     if (status == false) continue;
     if (check_size) {
       if (!data_size_initialized) {

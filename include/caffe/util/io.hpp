@@ -116,6 +116,10 @@ inline bool ReadFileToDatum(const string& filename, Datum* datum) {
 }
 
 bool ReadImageToDatum(const string& filename, const int label,
+    const int height, const int width, const bool is_color, const int crop_height, const int crop_width,
+    const std::string & encoding, Datum* datum);
+
+bool ReadImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color,
     const std::string & encoding, Datum* datum);
 
@@ -153,6 +157,9 @@ cv::Mat ReadImageToCVMat(const string& filename,
     const int height, const int width, const bool is_color);
 
 cv::Mat ReadImageToCVMat(const string& filename,
+    const int height, const int width, const bool is_color, const int crop_height, const int crop_width);
+
+	cv::Mat ReadImageToCVMat(const string& filename,
     const int height, const int width);
 
 cv::Mat ReadImageToCVMat(const string& filename,

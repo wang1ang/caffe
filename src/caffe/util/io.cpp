@@ -96,6 +96,51 @@ cv::Mat ReadImageToCVMat(const string& filename,
   }
   return cv_img;
 }
+cv::Mat ReadImageToCVMat(const string& filename,
+    const int height, const int width, const bool is_color, 
+  const int crop_height, const int crop_width) {
+  cv::Mat cv_img;
+  int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
+    CV_LOAD_IMAGE_GRAYSCALE);
+  cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);
+  if (!cv_img_origin.data) {
+    LOG(ERROR) << "Could not open or find file " << filename;
+    return cv_img_origin;
+  }
+  cv::Mat cv_img_crop;
+  int height_c = cv_img_origin.rows;
+  int width_c  = cv_img_origin.cols;
+  if (crop_height > 0 && crop_width > 0 && crop_height <= cv_img_origin.rows && crop_width <= cv_img_origin.cols) {
+      if (cv_img_origin.cols * crop_height  < crop_width * cv_img_origin.rows)
+      {
+          // crop height
+          height_c = (int)((float)cv_img_origin.cols * crop_height / crop_width + 0.5);
+          width_c = cv_img_origin.cols;
+      }
+      else if (cv_img_origin.cols *crop_height > crop_width * cv_img_origin.rows)
+      {
+          // crop width
+          width_c = int((float)cv_img_origin.rows * crop_width / crop_height + 0.5);
+          height_c = cv_img_origin.rows;
+      }
+
+    if (cv_img_origin.cols == width_c && cv_img_origin.rows == height_c) {
+      cv_img_crop = cv_img_origin;
+    } else {
+      int x = (cv_img_origin.cols - width_c) / 2;
+      int y = (cv_img_origin.rows - height_c) / 2;
+      cv_img_crop = cv_img_origin(cv::Rect(x, y, width_c, height_c));
+    }
+  } else {
+    cv_img_crop = cv_img_origin;
+  }
+  if (height > 0 && width > 0) {
+    cv::resize(cv_img_crop, cv_img, cv::Size(width, height));
+  } else {
+    cv_img = cv_img_crop;
+  }
+  return cv_img;
+}
 
 cv::Mat ReadImageToCVMat(const string& filename,
     const int height, const int width) {
@@ -149,6 +194,34 @@ bool ReadImageToDatum(const string& filename, const int label,
     return false;
   }
 }
+
+bool ReadImageToDatum(const string& filename, const int label,
+    const int height, const int width, const bool is_color, 
+    const int crop_height, const int crop_width,
+    const std::string & encoding, Datum* datum) {
+  cv::Mat cv_img = ReadImageToCVMat(filename, height, width, is_color, 
+                                    crop_height, crop_width);
+  if (cv_img.data) {
+    if (encoding.size()) {
+      if ( (cv_img.channels() == 3) == is_color && !height && !width &&
+          matchExt(filename, encoding) )
+        return ReadFileToDatum(filename, label, datum);
+      std::vector<uchar> buf;
+      cv::imencode("."+encoding, cv_img, buf);
+      datum->set_data(std::string(reinterpret_cast<char*>(&buf[0]),
+                      buf.size()));
+      datum->set_label(label);
+      datum->set_encoded(true);
+      return true;
+    }
+    CVMatToDatum(cv_img, datum);
+    datum->set_label(label);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 #endif  // USE_OPENCV
 
 bool ReadFileToDatum(const string& filename, const int label,
