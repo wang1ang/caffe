@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "convert_imageset-d", "build\tools\convert_imageset-d.exe", "{0553BCAD-10D5-43EE-8BE0-FC89B9AB2A51}"
+	ProjectSection(DebuggerProjectSystem) = preProject
+		PortSupplier = 00000000-0000-0000-0000-000000000000
+		Executable = D:\src\caffe-latest\scripts\build\tools\convert_imageset-d.exe
+		RemoteMachine = YANGWA-DEV
+		StartingDirectory = D:\adult\fold3(correct)
+		Arguments =  -backend leveldb -crop_height 240 -crop_width 300 -resize_height 240 -resize_width 240 \\stcasia\root\Backup\MMIG\VideoUnderstanding\Data_AdtClp_Frames\ large_test_cat63_col2.txt large_test_cat63_leveldb_240_debug
+		Environment = Default
+		LaunchingEngine = 00000000-0000-0000-0000-000000000000
+		UseLegacyDebugEngines = No
+		LaunchSQLEngine = No
+		AttachLaunchAction = No
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0553BCAD-10D5-43EE-8BE0-FC89B9AB2A51}.Release|x64.ActiveCfg = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
