@@ -81,6 +81,8 @@ int main(int argc, char** argv) {
   int label;
   while (std::getline(infile, line)) {
     pos = line.find_last_of(' ');
+    if (pos == string::npos)
+        pos = line.find_last_of('\t');
     label = atoi(line.substr(pos + 1).c_str());
     lines.push_back(std::make_pair(line.substr(0, pos), label));
   }
@@ -96,8 +98,8 @@ int main(int argc, char** argv) {
 
   int resize_height = std::max<int>(0, FLAGS_resize_height);
   int resize_width = std::max<int>(0, FLAGS_resize_width);
-  int crop_height = std::max<int>(0, FLAGS_resize_height);
-  int crop_width = std::max<int>(0, FLAGS_resize_width);
+  int crop_height = std::max<int>(0, FLAGS_crop_height);
+  int crop_width = std::max<int>(0, FLAGS_crop_width);
 
   // Create new DB
   scoped_ptr<db::DB> db(db::GetDB(FLAGS_backend));
