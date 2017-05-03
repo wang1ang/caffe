@@ -6,7 +6,7 @@ if DEFINED APPVEYOR (
     echo Setting Appveyor defaults
     if NOT DEFINED MSVC_VERSION set MSVC_VERSION=14
     if NOT DEFINED WITH_NINJA set WITH_NINJA=1
-    if NOT DEFINED CPU_ONLY set CPU_ONLY=1
+    if NOT DEFINED CPU_ONLY set CPU_ONLY=0
     if NOT DEFINED CMAKE_CONFIG set CMAKE_CONFIG=Release
     if NOT DEFINED CMAKE_BUILD_SHARED_LIBS set CMAKE_BUILD_SHARED_LIBS=0
     if NOT DEFINED BUILD_PYTHON set BUILD_PYTHON=1
@@ -18,7 +18,7 @@ if DEFINED APPVEYOR (
     if NOT DEFINED RUN_INSTALL set RUN_INSTALL=1
 
     :: Set python 2.7 with conda as the default python
-    set PATH=C:\Miniconda-x64;C:\Miniconda-x64\Scripts;C:\Miniconda-x64\Library\bin;!PATH!
+    :: set PATH=C:\Miniconda-x64;C:\Miniconda-x64\Scripts;C:\Miniconda-x64\Library\bin;!PATH!
     :: Check that we have the right python version
     !PYTHON_EXE! --version
     :: Add the required channels
