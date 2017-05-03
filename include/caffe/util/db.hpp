@@ -2,7 +2,6 @@
 #define CAFFE_UTIL_DB_HPP
 
 #include <string>
-#include <fstream>
 
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
