@@ -1,6 +1,7 @@
 #include "caffe/util/db.hpp"
 #include "caffe/util/db_leveldb.hpp"
 #include "caffe/util/db_lmdb.hpp"
+#include "caffe/util/db_TXT.hpp"
 
 #include <string>
 
@@ -16,6 +17,8 @@ DB* GetDB(DataParameter::DB backend) {
   case DataParameter_DB_LMDB:
     return new LMDB();
 #endif  // USE_LMDB
+  case DataParameter_DB_TXTDB:
+    return new TxtDB();
   default:
     LOG(FATAL) << "Unknown database backend";
     return NULL;
@@ -33,6 +36,9 @@ DB* GetDB(const string& backend) {
     return new LMDB();
   }
 #endif  // USE_LMDB
+  if (backend == "txt") {
+    return new TxtDB();
+  }
   LOG(FATAL) << "Unknown database backend";
   return NULL;
 }
