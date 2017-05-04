@@ -47,6 +47,5 @@ int main(int argc, char** argv) {
       txn->Commit();
       LOG(INFO) << "Processed " << count << " items.";
     }
-    db_in->Close();
     return 0;
 }
