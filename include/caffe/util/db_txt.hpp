@@ -13,6 +13,7 @@ class TxtDBCursor : public Cursor {
     : txt_(txt) {
     SeekToFirst();
     CHECK(txt_->good()) << "Text is not opened.";
+	Next();
   }
   ~TxtDBCursor() {}
   virtual void SeekToFirst() { txt_->seekg(0, std::ios_base::beg); }
