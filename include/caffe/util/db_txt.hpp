@@ -13,7 +13,7 @@ class TxtDBCursor : public Cursor {
     : txt_(txt) {
     SeekToFirst();
     CHECK(txt_->good()) << "Text is not opened.";
-	Next();
+    Next();
   }
   ~TxtDBCursor() {}
   virtual void SeekToFirst() { txt_->seekg(0, std::ios_base::beg); }
@@ -36,21 +36,21 @@ class TxtDBCursor : public Cursor {
   }
   virtual string key() { return key_; }
   virtual string value() {
-	  std::vector<std::string> feat_string;
-	  boost::split(feat_string, value_, boost::is_any_of("\t"));
-	  int dim = feat_string.size();
-	  caffe::Datum datum;
-	  datum.set_height(1);
-	  datum.set_width(dim);
-	  datum.set_channels(1);
-	  datum.clear_data();
-	  datum.clear_float_data();
-	  for (int i = 0; i < dim; i++)
-		  datum.add_float_data((float)atof(feat_string[i].c_str()));
-	  string out;
-	  CHECK(datum.SerializeToString(&out));
-	  return out; 
-	  }
+      std::vector<std::string> feat_string;
+      boost::split(feat_string, value_, boost::is_any_of("\t"));
+      int dim = feat_string.size();
+      caffe::Datum datum;
+      datum.set_height(1);
+      datum.set_width(dim);
+      datum.set_channels(1);
+      datum.clear_data();
+      datum.clear_float_data();
+      for (int i = 0; i < dim; i++)
+          datum.add_float_data((float)atof(feat_string[i].c_str()));
+      string out;
+      CHECK(datum.SerializeToString(&out));
+      return out; 
+      }
   virtual bool valid() { return txt_->good(); }
 
  private:
