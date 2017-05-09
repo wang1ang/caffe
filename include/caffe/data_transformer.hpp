@@ -75,6 +75,7 @@ class DataTransformer {
    *    set_cpu_data() is used. See image_data_layer.cpp for an example.
    */
   void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob);
+  void Transform_resize(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob);
 #endif  // USE_OPENCV
 
   /**
@@ -89,6 +90,7 @@ class DataTransformer {
    *    input blob. It can be part of top blob's data.
    */
   void Transform(Blob<Dtype>* input_blob, Blob<Dtype>* transformed_blob);
+  void Transform_resize(Blob<Dtype>* input_blob, Blob<Dtype>* transformed_blob);
 
   /**
    * @brief Infers the shape of transformed_blob will have when
@@ -139,6 +141,7 @@ class DataTransformer {
   virtual int Rand(int n);
 
   void Transform(const Datum& datum, Dtype* transformed_data);
+  void Transform_resize(const Datum& datum, Dtype* transformed_data);
   // Tranformation parameters
   TransformationParameter param_;
 
