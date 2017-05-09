@@ -16,21 +16,26 @@ class TxtDBCursor : public Cursor {
     Next();
   }
   ~TxtDBCursor() {}
-  virtual void SeekToFirst() { txt_->seekg(0, std::ios_base::beg); }
+  virtual void SeekToFirst() {
+      txt_->clear();
+      txt_->seekg(0, txt_->beg);
+  }
   virtual void Next() { 
     string line;
     while (!std::getline(*txt_, line))
     {
       if (txt_->bad()) {
-          break;
+        LOG(INFO) << "txtdb error reading " << line;
+        break;
         // IO error
       } else if (txt_->eof()) {
           SeekToFirst();
       }
     }
     size_t p = line.find('\t');
-    if (p == string::npos)
-        // error
+    if (p == string::npos) {
+        LOG(INFO) << "txtdb error reading " << line;
+    }
     key_ = line.substr(0, p);
     value_ = line.substr(p+1);
   }
