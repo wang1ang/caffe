@@ -14,6 +14,7 @@ class TxtDBCursor : public Cursor {
     SeekToFirst();
     CHECK(txt_->good()) << "Text is not opened.";
     Next();
+    CheckSparse();
   }
   ~TxtDBCursor() {}
   virtual void SeekToFirst() {
@@ -41,27 +42,82 @@ class TxtDBCursor : public Cursor {
   }
   virtual string key() { return key_; }
   virtual string value() {
-      std::vector<std::string> feat_string;
-      boost::split(feat_string, value_, boost::is_any_of("\t"));
-      int dim = feat_string.size();
-      caffe::Datum datum;
+    std::vector<std::string> feat_string;
+    boost::split(feat_string, value_, boost::is_any_of("\t"));
+    caffe::Datum datum;
+    if (sparse) {
+      int dim = atoi(feat_string[sparse_idx].c_str());
+      if (sparse_idx > 0) {
+        dim += sparse_idx - 1;
+        datum.set_height(1);
+        datum.set_width(dim);
+        datum.set_channels(1);
+        datum.clear_data();
+        datum.clear_float_data();
+        datum.set_label(atoi(feat_string[0].c_str()));
+        for (int i = 1; i < sparse_idx; i++)
+          datum.add_float_data((float)atof(feat_string[i].c_str()));
+      } else {
+        datum.set_height(1);
+        datum.set_width(dim);
+        datum.set_channels(1);
+        datum.clear_data();
+        datum.clear_float_data();
+      }
+      int l = feat_string.size();
+      int p = 0;
+      for (int i = sparse_idx + 1; i < l; i++) {
+        std::vector<std::string> pair;
+        boost::split(pair, feat_string[i], boost::is_any_of(":"));
+        int idx = atoi(pair[0].c_str());
+        float v = atof(pair[1].c_str());
+        while (p < idx) {
+          datum.add_float_data(0);
+          p++;
+        }
+        datum.add_float_data(v);
+        p++;
+      }
+      for (int i = p; i < dim; i++)
+          datum.add_float_data(0);
+    }
+    else {
+      int dim = feat_string.size()-1;
       datum.set_height(1);
       datum.set_width(dim);
       datum.set_channels(1);
       datum.clear_data();
       datum.clear_float_data();
+      datum.set_label(atoi(feat_string[0].c_str()));
       for (int i = 0; i < dim; i++)
-          datum.add_float_data((float)atof(feat_string[i].c_str()));
-      string out;
-      CHECK(datum.SerializeToString(&out));
-      return out; 
-      }
+        datum.add_float_data((float)atof(feat_string[i+1].c_str()));
+    }
+    string out;
+    CHECK(datum.SerializeToString(&out));
+    return out;
+  }
   virtual bool valid() { return txt_->good(); }
 
- private:
+private:
   std::fstream *txt_;
   string key_;
   string value_;
+  bool sparse;
+  int sparse_idx;
+  void CheckSparse()
+  {
+      sparse_idx = -1;
+    auto p = value_.find(':');
+    if (p != string::npos) {
+      sparse = true;
+      while ((p = value_.rfind('\t', p - 1)) != string::npos) {
+        sparse_idx++;
+      }
+    }
+    else { 
+      sparse = false;
+    }
+  }
 };
 
 class TxtDBTransaction : public Transaction {
