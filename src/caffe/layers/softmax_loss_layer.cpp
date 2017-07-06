@@ -92,6 +92,11 @@ void SoftmaxWithLossLayer<Dtype>::Forward_cpu(
   softmax_layer_->Forward(softmax_bottom_vec_, softmax_top_vec_);
   const Dtype* prob_data = prob_.cpu_data();
   const Dtype* label = bottom[1]->cpu_data();
+  const Dtype* sample_weight = nullptr;
+  if (bottom.size() > 2) {
+    sample_weight = bottom[2]->cpu_data();
+    // TODO: normalize sample_weight
+  }
   int dim = prob_.count() / outer_num_;
   int count = 0;
   Dtype loss = 0;
@@ -103,8 +108,12 @@ void SoftmaxWithLossLayer<Dtype>::Forward_cpu(
       }
       DCHECK_GE(label_value, 0);
       DCHECK_LT(label_value, prob_.shape(softmax_axis_));
-      loss -= log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
-                           Dtype(FLT_MIN)));
+      if (sample_weight == nullptr)
+        loss -= log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
+                         Dtype(FLT_MIN)));
+      else
+        loss -= sample_weight[i * inner_num_ + j] * log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
+                                                           Dtype(FLT_MIN)));
       ++count;
     }
   }
@@ -126,6 +135,7 @@ void SoftmaxWithLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const Dtype* prob_data = prob_.cpu_data();
     caffe_copy(prob_.count(), prob_data, bottom_diff);
     const Dtype* label = bottom[1]->cpu_data();
+    const Dtype* sample_weight = bottom.size() > 2 ? bottom[2]->cpu_data():nullptr;
     int dim = prob_.count() / outer_num_;
     int count = 0;
     for (int i = 0; i < outer_num_; ++i) {
@@ -139,6 +149,10 @@ void SoftmaxWithLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
           bottom_diff[i * dim + label_value * inner_num_ + j] -= 1;
           ++count;
         }
+        // TODO: normalize sample_weight
+        if (sample_weight != nullptr)
+          for (int k = 0; k < dim; ++k)
+            bottom_diff[i * dim + k * inner_num_ + j] *= sample_weight[i * inner_num_ + j];
       }
     }
     // Scale gradient
