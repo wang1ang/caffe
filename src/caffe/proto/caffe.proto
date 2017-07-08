@@ -730,7 +730,7 @@ message EmbedParameter {
   optional bool bias_term = 3 [default = true]; // Whether to use a bias term
   optional FillerParameter weight_filler = 4; // The filler for the weight
   optional FillerParameter bias_filler = 5; // The filler for the bias
-
+  optional string source = 6; // Load pre-trained matrix
 }
 
 // Message that stores parameters used by ExpLayer
@@ -755,7 +755,7 @@ message FlattenParameter {
   optional int32 end_axis = 2 [default = -1];
 }
 
-// Message that stores parameters used by HDF5DataLayer
+// Message that stores parameters used by DataLayer
 message HDF5DataParameter {
   // Specify the data source.
   optional string source = 1;

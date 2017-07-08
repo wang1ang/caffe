@@ -3,6 +3,7 @@
 #include "caffe/filler.hpp"
 #include "caffe/layers/embed_layer.hpp"
 #include "caffe/util/math_functions.hpp"
+#include "fstream"
 
 namespace caffe {
 
@@ -40,6 +41,19 @@ void EmbedLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
           this->layer_param_.embed_param().bias_filler()));
       bias_filler->Fill(this->blobs_[1].get());
+    }
+    const string& source = this->layer_param_.embed_param().source();
+    if (source != "") {
+      std::ifstream infile;
+      infile.open(source);
+      if (infile.good()) {
+        Dtype* weight = this->blobs_[0]->mutable_cpu_data();
+        for (int i = 0; i < K_; i++) {
+          for (int j = 0; j < N_; j++) {
+            infile >> weight[i * N_ + j];
+          }
+        }
+      }
     }
   }  // parameter initialization
   this->param_propagate_down_.resize(this->blobs_.size(), true);
