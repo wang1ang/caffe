@@ -158,7 +158,9 @@ call "%batch_file%" amd64
 :: Add -DCUDNN_ROOT=C:/Projects/caffe/cudnn-8.0-windows10-x64-v5.1/cuda ^
 :: below to use cuDNN
 cmake -G"!CMAKE_GENERATOR!" ^
-      -DBLAS=Open ^
+      -DBLAS=mkl ^
+	  -DMKL_INCLUDE_DIR="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2017.4.210\windows\mkl\include" ^
+	  -DMKL_RT_LIBRARY="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2017.4.210\windows\mkl\lib\intel64_win\mkl_rt.lib" ^
       -DCMAKE_BUILD_TYPE:STRING=%CMAKE_CONFIG% ^
       -DBUILD_SHARED_LIBS:BOOL=%CMAKE_BUILD_SHARED_LIBS% ^
       -DBUILD_python:BOOL=%BUILD_PYTHON% ^
@@ -169,6 +171,7 @@ cmake -G"!CMAKE_GENERATOR!" ^
       -DINSTALL_PREREQUISITES:BOOL=1 ^
       -DUSE_NCCL:BOOL=!USE_NCCL! ^
       -DCUDA_ARCH_NAME:STRING=%CUDA_ARCH_NAME% ^
+	  -DCUDNN_ROOT="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0" ^
       "%~dp0\.."
 
 if ERRORLEVEL 1 (
