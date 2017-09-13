@@ -45,7 +45,8 @@ DEFINE_bool(encoded, false,
     "When this option is on, the encoded image will be save in datum");
 DEFINE_string(encode_type, "",
     "Optional: What type should we encode the image as ('png','jpg',...).");
-
+DEFINE_bool(cont, false,
+    "Optional: Continue last convertion.");
 int main(int argc, char** argv) {
 #ifdef USE_OPENCV
   ::google::InitGoogleLogging(argv[0]);
@@ -73,7 +74,6 @@ int main(int argc, char** argv) {
   const bool check_size = FLAGS_check_size;
   const bool encoded = FLAGS_encoded;
   const string encode_type = FLAGS_encode_type;
-
   std::ifstream infile(argv[2]);
   std::vector<std::pair<std::string, int> > lines;
   std::string line;
@@ -92,7 +92,6 @@ int main(int argc, char** argv) {
     shuffle(lines.begin(), lines.end());
   }
   LOG(INFO) << "A total of " << lines.size() << " images.";
-
   if (encode_type.size() && !encoded)
     LOG(INFO) << "encode_type specified, assuming encoded=true.";
 
@@ -100,10 +99,26 @@ int main(int argc, char** argv) {
   int resize_width = std::max<int>(0, FLAGS_resize_width);
   int crop_height = std::max<int>(0, FLAGS_crop_height);
   int crop_width = std::max<int>(0, FLAGS_crop_width);
-
+  bool cont = FLAGS_cont;
+  int cont_offset = 0;
   // Create new DB
   scoped_ptr<db::DB> db(db::GetDB(FLAGS_backend));
-  db->Open(argv[3], db::NEW);
+  if (cont) {
+    {
+      scoped_ptr<db::DB> db_read(db::GetDB(FLAGS_backend));
+      db_read->Open(argv[3], db::READ);
+      scoped_ptr<db::Cursor> cursor(db_read->NewCursor());
+      while (cursor->valid()) {
+        ++cont_offset;
+        cursor->Next();
+      }
+    }
+    LOG(INFO) << cont_offset << " images already converted.";
+    db->Open(argv[3], db::WRITE);
+  }
+  else {
+    db->Open(argv[3], db::NEW);
+  }
   scoped_ptr<db::Transaction> txn(db->NewTransaction());
 
   // Storing to db
@@ -114,6 +129,8 @@ int main(int argc, char** argv) {
   bool data_size_initialized = false;
 
   for (int line_id = 0; line_id < lines.size(); ++line_id) {
+    if (line_id < cont_offset)
+      continue;
     bool status;
     std::string enc = encode_type;
     if (encoded && !enc.size()) {
@@ -165,6 +182,7 @@ int main(int argc, char** argv) {
     txn->Commit();
     LOG(INFO) << "Processed " << count << " files.";
   }
+  db->Close();
 #else
   LOG(FATAL) << "This tool requires OpenCV; compile with USE_OPENCV.";
 #endif  // USE_OPENCV
