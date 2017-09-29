@@ -16,13 +16,21 @@ __global__ void SoftmaxLossForwardGPU(const int nthreads,
   CUDA_KERNEL_LOOP(index, nthreads) {
     const int n = index / spatial_dim;
     const int s = index % spatial_dim;
-    const int label_value = static_cast<int>(label[n * spatial_dim + s]);
+    int label_value = static_cast<int>(label[n * spatial_dim + s]);
+    int sign = 1;
+    if (label_value < 0) {
+      label_value = -label_value;
+      sign = -1;
+    }
     if (has_ignore_label_ && label_value == ignore_label_) {
       loss[index] = 0;
       counts[index] = 0;
     } else {
-      loss[index] = -log(max(prob_data[n * dim + label_value * spatial_dim + s],
-                      Dtype(FLT_MIN)));
+      Dtype p = prob_data[n * dim + label_value * spatial_dim + s];
+      if (sign < 0) {
+        p = 1 - p;
+      }
+      loss[index] = -log(max(p, Dtype(FLT_MIN)));
       counts[index] = 1;
     }
   }
@@ -78,15 +86,27 @@ __global__ void SoftmaxLossBackwardGPU(const int nthreads, const Dtype* top,
   CUDA_KERNEL_LOOP(index, nthreads) {
     const int n = index / spatial_dim;
     const int s = index % spatial_dim;
-    const int label_value = static_cast<int>(label[n * spatial_dim + s]);
-
+    int label_value = static_cast<int>(label[n * spatial_dim + s]);
+    int sign = 1;
+    if (label_value < 0) {
+      label_value = -label_value;
+      sign = -1;
+    }
     if (has_ignore_label_ && label_value == ignore_label_) {
       for (int c = 0; c < channels; ++c) {
         bottom_diff[n * dim + c * spatial_dim + s] = 0;
       }
       counts[index] = 0;
     } else {
-      bottom_diff[n * dim + label_value * spatial_dim + s] -= 1;
+      if (sign > 0) {
+        bottom_diff[n * dim + label_value * spatial_dim + s] -= 1;
+      } else {
+        for (int c = 0; c < channels; ++c) {
+          if (c != label_value) {
+            bottom_diff[n * dim + c * spatial_dim + s] *= 1 - 1 / max(1 - bottom_diff[n * dim + label_value * spatial_dim + s], Dtype(FLT_MIN));;
+          }
+        }        
+      }
       counts[index] = 1;
     }
   }

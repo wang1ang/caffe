@@ -102,18 +102,24 @@ void SoftmaxWithLossLayer<Dtype>::Forward_cpu(
   Dtype loss = 0;
   for (int i = 0; i < outer_num_; ++i) {
     for (int j = 0; j < inner_num_; j++) {
-      const int label_value = static_cast<int>(label[i * inner_num_ + j]);
+      int label_value = static_cast<int>(label[i * inner_num_ + j]);
+      int sign = 1;
+      if (label_value < 0) {
+        label_value = -label_value;
+        sign = -1;
+      }
       if (has_ignore_label_ && label_value == ignore_label_) {
         continue;
       }
       DCHECK_GE(label_value, 0);
       DCHECK_LT(label_value, prob_.shape(softmax_axis_));
+      Dtype p = prob_data[i * dim + label_value * inner_num_ + j];
+      if (sign < 0)
+        p = 1 - p; // reverse prob for negative samples
       if (sample_weight == nullptr)
-        loss -= log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
-                         Dtype(FLT_MIN)));
+        loss -= log(std::max(p, Dtype(FLT_MIN)));
       else
-        loss -= sample_weight[i * inner_num_ + j] * log(std::max(prob_data[i * dim + label_value * inner_num_ + j],
-                                                           Dtype(FLT_MIN)));
+        loss -= sample_weight[i * inner_num_ + j] * log(std::max(p, Dtype(FLT_MIN)));
       ++count;
     }
   }
@@ -140,13 +146,28 @@ void SoftmaxWithLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     int count = 0;
     for (int i = 0; i < outer_num_; ++i) {
       for (int j = 0; j < inner_num_; ++j) {
-        const int label_value = static_cast<int>(label[i * inner_num_ + j]);
+        int label_value = static_cast<int>(label[i * inner_num_ + j]);
+        int sign = 1;
+        if (label_value < 0) {
+          label_value = -label_value;
+          sign = -1;
+        }
+
         if (has_ignore_label_ && label_value == ignore_label_) {
           for (int c = 0; c < bottom[0]->shape(softmax_axis_); ++c) {
             bottom_diff[i * dim + c * inner_num_ + j] = 0;
           }
         } else {
-          bottom_diff[i * dim + label_value * inner_num_ + j] -= 1;
+          if (sign > 0) {
+              bottom_diff[i * dim + label_value * inner_num_ + j] -= 1;
+          }
+          else {
+            for (int c = 0; c < bottom[0]->shape(softmax_axis_); ++c) {
+              if (c != label_value) {
+                  bottom_diff[i * dim + c * inner_num_ + j] *= 1 - 1 / std::max(1 - bottom_diff[i * dim + label_value * inner_num_ + j], Dtype(FLT_MIN));
+              }
+            }
+          }
           ++count;
         }
         // TODO: normalize sample_weight
