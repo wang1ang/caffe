@@ -54,6 +54,7 @@ class SigmoidCrossEntropyLossLayer : public LossLayer<Dtype> {
       const vector<Blob<Dtype>*>& top);
 
   virtual inline const char* type() const { return "SigmoidCrossEntropyLoss"; }
+  virtual inline int ExactNumBottomBlobs() const { return -1; }
 
  protected:
   /// @copydoc SigmoidCrossEntropyLossLayer
@@ -102,7 +103,7 @@ class SigmoidCrossEntropyLossLayer : public LossLayer<Dtype> {
   /// outputs will be read from valid_count, unless it is -1 in which case
   /// all outputs are assumed to be valid.
   virtual Dtype get_normalizer(
-      LossParameter_NormalizationMode normalization_mode, int valid_count);
+      LossParameter_NormalizationMode normalization_mode, Dtype valid_count);
 
   /// The internal SigmoidLayer used to map predictions to probabilities.
   shared_ptr<SigmoidLayer<Dtype> > sigmoid_layer_;

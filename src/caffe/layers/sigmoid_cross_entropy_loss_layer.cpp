@@ -47,7 +47,7 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Reshape(
 // instead of duplicated here and in SoftMaxWithLossLayer
 template <typename Dtype>
 Dtype SigmoidCrossEntropyLossLayer<Dtype>::get_normalizer(
-    LossParameter_NormalizationMode normalization_mode, int valid_count) {
+    LossParameter_NormalizationMode normalization_mode, Dtype valid_count) {
   Dtype normalizer;
   switch (normalization_mode) {
     case LossParameter_NormalizationMode_FULL:
@@ -85,16 +85,29 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   // Stable version of loss computation from input data
   const Dtype* input_data = bottom[0]->cpu_data();
   const Dtype* target = bottom[1]->cpu_data();
-  int valid_count = 0;
+  const Dtype* sample_weight = nullptr;
+  if (bottom.size() > 2) {
+    sample_weight = bottom[2]->cpu_data();
+    // TODO: normalize sample weight
+  }
+  Dtype valid_count = 0;
   Dtype loss = 0;
   for (int i = 0; i < bottom[0]->count(); ++i) {
     const int target_value = static_cast<int>(target[i]);
     if (has_ignore_label_ && target_value == ignore_label_) {
       continue;
     }
-    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
-        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
-    ++valid_count;
+    if (sample_weight == nullptr) {
+      loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
+          log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
+      ++valid_count;
+    } else {
+      loss -= sample_weight[i] * (input_data[i] * (target[i] - (input_data[i] >= 0)) -
+          log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+      valid_count += sample_weight[i];
+    }
+    //++valid_count;
+    
   }
   normalizer_ = get_normalizer(normalization_, valid_count);
   top[0]->mutable_cpu_data()[0] = loss / normalizer_;
@@ -113,6 +126,7 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
     const int count = bottom[0]->count();
     const Dtype* sigmoid_output_data = sigmoid_output_->cpu_data();
     const Dtype* target = bottom[1]->cpu_data();
+    const Dtype* sample_weight = bottom.size() > 2 ? bottom[2]->cpu_data():nullptr;
     Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
     caffe_sub(count, sigmoid_output_data, target, bottom_diff);
     // Zero out gradient of ignored targets.
@@ -124,6 +138,12 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
         }
       }
     }
+    if (sample_weight != nullptr) {
+      for (int i = 0; i < count; ++i) {
+          bottom_diff[i] *= sample_weight[i];
+      }
+    }
+
     // Scale down gradient
     Dtype loss_weight = top[0]->cpu_diff()[0] / normalizer_;
     caffe_scal(count, loss_weight, bottom_diff);

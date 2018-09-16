@@ -9,7 +9,7 @@ namespace caffe {
 template <typename Dtype>
 __global__ void SigmoidCrossEntropyLossForwardGPU(const int nthreads,
           const Dtype* input_data, const Dtype* target, Dtype* loss,
-          const bool has_ignore_label_, const int ignore_label_,
+          const bool has_ignore_label_, const int ignore_label_, const Dtype* sample_weight,
           Dtype* counts) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     const int target_value = static_cast<int>(target[i]);
@@ -21,6 +21,10 @@ __global__ void SigmoidCrossEntropyLossForwardGPU(const int nthreads,
           log(1 + exp(input_data[i] - 2 * input_data[i] *
           (input_data[i] >= 0)));
       counts[i] = 1;
+      if (nullptr != sample_weight) {
+        loss[i] *= sample_weight[i];
+        counts[i] = sample_weight[i];
+      }
     }
   }
 }
@@ -36,6 +40,13 @@ __global__ void SigmoidCrossEntropyLossIgnoreDiffGPU(const int count,
   }
 }
 
+template <typename Dtype>
+__global__ void SigmoidCrossEntropyLossWeightDiffGPU(const int count,
+    const Dtype* sample_weight, Dtype* diff) {
+  CUDA_KERNEL_LOOP(i, count) {
+    diff[i] *= sample_weight[i];
+  }
+}
 
 template <typename Dtype>
 void SigmoidCrossEntropyLossLayer<Dtype>::Forward_gpu(
@@ -48,6 +59,7 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_gpu(
   // Stable version of loss computation from input data
   const Dtype* input_data = bottom[0]->gpu_data();
   const Dtype* target = bottom[1]->gpu_data();
+  const Dtype* sample_weight = bottom.size() > 2 ? bottom[2]->gpu_data():nullptr;
   // Since this memory is not used for anything until it is overwritten
   // on the backward pass, we use it here to avoid having to allocate new GPU
   // memory to accumulate intermediate results in the kernel.
@@ -57,10 +69,10 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_gpu(
   // NOLINT_NEXT_LINE(whitespace/operators)
   SigmoidCrossEntropyLossForwardGPU<Dtype><<<CAFFE_GET_BLOCKS(count),
       CAFFE_CUDA_NUM_THREADS>>>(count, input_data, target, loss_data,
-      has_ignore_label_, ignore_label_, count_data);
+      has_ignore_label_, ignore_label_, sample_weight, count_data);
   // Only launch another CUDA kernel if we actually need the valid count.
   if (normalization_ == LossParameter_NormalizationMode_VALID &&
-      has_ignore_label_) {
+      has_ignore_label_ || sample_weight != nullptr) {
     caffe_gpu_asum(count, count_data, &valid_count);
   } else {
     valid_count = count;
@@ -84,6 +96,7 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
     const int count = bottom[0]->count();
     const Dtype* sigmoid_output_data = sigmoid_output_->gpu_data();
     const Dtype* target = bottom[1]->gpu_data();
+    const Dtype* sample_weight = bottom.size()>2?bottom[2]->gpu_data():nullptr;
     Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
     caffe_copy(count, sigmoid_output_data, bottom_diff);
     caffe_gpu_axpy(count, Dtype(-1), target, bottom_diff);
@@ -93,6 +106,12 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
       SigmoidCrossEntropyLossIgnoreDiffGPU<Dtype><<<CAFFE_GET_BLOCKS(count),
         CAFFE_CUDA_NUM_THREADS>>>(count, ignore_label_, target, bottom_diff);
     }
+    if (sample_weight != nullptr) {
+      // NOLINT_NEXT_LINE(whitespace/operators)
+      SigmoidCrossEntropyLossWeightDiffGPU<Dtype><<<CAFFE_GET_BLOCKS(count),
+        CAFFE_CUDA_NUM_THREADS>>>(count, sample_weight, bottom_diff);
+    }
+
     // Scale down gradient
     Dtype loss_weight = top[0]->cpu_diff()[0] / normalizer_;
     caffe_gpu_scal(count, loss_weight, bottom_diff);
