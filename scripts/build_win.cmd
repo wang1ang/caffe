@@ -159,8 +159,8 @@ call "%batch_file%" amd64
 :: below to use cuDNN
 cmake -G"!CMAKE_GENERATOR!" ^
       -DBLAS:STRING=mkl ^
-	  -DMKL_INCLUDE_DIR:STRING="C:/Program Files (x86)/IntelSWTools/compilers_and_libraries_2018.1.156/windows/mkl/include" ^
-	  -DMKL_RT_LIBRARY:STRING="C:/Program Files (x86)/IntelSWTools/compilers_and_libraries_2018.1.156/windows/mkl/lib/intel64_win/mkl_rt.lib" ^
+	  -DMKL_INCLUDE_DIR:STRING="C:/Program Files (x86)/IntelSWTools/compilers_and_libraries_2019.0.117/windows/mkl/include" ^
+	  -DMKL_RT_LIBRARY:STRING="C:/Program Files (x86)/IntelSWTools/compilers_and_libraries_2019.0.117/windows/mkl/lib/intel64_win/mkl_rt.lib" ^
       -DCMAKE_BUILD_TYPE:STRING=%CMAKE_CONFIG% ^
       -DBUILD_SHARED_LIBS:BOOL=%CMAKE_BUILD_SHARED_LIBS% ^
       -DBUILD_python:BOOL=%BUILD_PYTHON% ^
