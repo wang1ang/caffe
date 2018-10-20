@@ -1267,12 +1267,12 @@ message V1LayerParameter {
     CONTRASTIVE_LOSS = 37;
     CONVOLUTION = 4;
     DATA = 5;
-    DATA_HEATMAP = 41;
+    DATA_HEATMAP = 40;
     DECONVOLUTION = 39;
     DROPOUT = 6;
     DUMMY_DATA = 32;
     EUCLIDEAN_LOSS = 7;
-    EUCLIDEAN_LOSS_HEATMAP = 42;
+    EUCLIDEAN_LOSS_HEATMAP = 41;
     ELTWISE = 25;
     EXP = 38;
     FLATTEN = 8;
@@ -1287,7 +1287,7 @@ message V1LayerParameter {
     MEMORY_DATA = 29;
     MULTINOMIAL_LOGISTIC_LOSS = 16;
     MVN = 34;
-    NORMALIZE = 40;
+    NORMALIZE = 42;
     POOLING = 17;
     POWER = 26;
     RELU = 18;
